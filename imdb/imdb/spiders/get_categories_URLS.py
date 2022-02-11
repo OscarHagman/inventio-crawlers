@@ -1,11 +1,18 @@
+import dotenv
 import scrapy
 import json
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 class GetCategoriesURLsSpider(scrapy.Spider):
     name = "get-categories-urls"
     allowed_domains = ['www.imdb.com']
+    #ENV = os.getenv("ENV")
+    COLLECTION_NAME = "titleCategoryLists"
 
 
     def start_requests(self):
@@ -26,10 +33,12 @@ class GetCategoriesURLsSpider(scrapy.Spider):
             genre_name = genre.xpath("string(.//a/img/@title)").get()
 
             genres.append({"genre": genre_name, "url": genre_url})
+        
+        return genres
 
         # genres_by_text = response.xpath('//*[@id="main"]')
-        print("GENRES:", genres)
-        with open("URLS.json", 'w') as f:
-            json.dump(genres, f, sort_keys=True, indent=2)
-        self.log(f"Updated URLS at {datetime_now}")
+        # print("GENRES:", genres)
+        # with open("URLS.json", 'w') as f:
+        #     json.dump(genres, f, sort_keys=True, indent=2)
+        # self.log(f"Updated URLS at {datetime_now}")
         
