@@ -5,7 +5,7 @@
 
 
 # useful for handling different item types with a single interface
-from itemadapter import ItemAdapter
+from itemadapter import ItemAdapter # Added by Scrapy
 import logging
 import pymongo
 from dotenv import load_dotenv
