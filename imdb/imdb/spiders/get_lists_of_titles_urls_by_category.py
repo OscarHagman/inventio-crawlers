@@ -6,16 +6,14 @@ import os
 load_dotenv()
 
 
-class GetTitleCategoryListsURLsSpider(scrapy.Spider):
-    name = "get_title_category_urls"
+class GetListsOfTitlesURLsByCategorySpider(scrapy.Spider):
+    name = "get_lists_of_titles_urls_by_category"
     allowed_domains = ['www.imdb.com']
-    COLLECTION_NAME = "titleCategoryLists"
-    URL = os.getenv("GET_TITLE_CATEGORY_LISTS_URLS_SPIDER_URL")
+    COLLECTION_NAME = "ListsOfTitlesByCategory"
+    URL = os.getenv("GET_LISTS_OF_TITLES_URLS_BY_CATEGORY_URL")
 
     def start_requests(self):
-        urls = [self.URL]
-        for url in urls:
-            yield scrapy.Request(url=url, callback=self.parse)
+        yield scrapy.Request(url=self.URL, callback=self.parse)
 
     def parse(self, response):
         genres_page = response.xpath("//*[@id='main']")
