@@ -29,6 +29,14 @@ class ScrapeTitleSpider(scrapy.Spider):
         # MEDIA SECTION
             # Get title image
             # Get title trailer
+        
+        # CAST SECTION
+            # Get top cast
+            # Get directors
+            # Get writers
+        
+        # MORE LIKE THIS SECTION
+            # Get id, name and rating
 
         # STORYLINE SECTION
         storyline_section = title_page.xpath("//section[@data-testid='Storyline']")
@@ -39,14 +47,25 @@ class ScrapeTitleSpider(scrapy.Spider):
         for genre in genres_selector_list:
             genres.append(genre.xpath("./a/text()").get())
         
-        # DETAILS SECTION
-
-        #tech_spec_div = scrapy.Selector(title_page).css('.ipc-metadata-list.ipc-metadata-list--dividers-none.ipc-metadata-list--compact.ipc-metadata-list--base')
-        #runtime = tech_spec_div.xpath("./div[@class='ipc-metadata-list-item__content-container']/text()").get()
-
-        #//main[@role="main"]//div[@class='Storyline__StorylineWrapper-sc-1b58ttw-0 iywpty']//div[@data-testid="storyline-plot-summary"]//div/div/text()
-        # //main[@role="main"] //div[@class="Storyline__StorylineWrapper-sc-1b58ttw-0 iywpty"] //div[@data-testid="storyline-plot-summary"] //div/div/text()
+        # Get Certificate (18, PG, 16 etc)
         
+        # DETAILS SECTION
+            # Get release date
+            # Get Country of origin
+            # Get Official Sites
+            # Get Languages
+            # Get production companies
+        
+        # BOX OFFICE SECTION
+            # Get Budget
+            # Get Gross US & Canada
+            # Get Opening weekend US & Canada
+            # Get Gross worldwide
+
+        # TECH SPEC SECTIONS
+            # Get runtime
+            # Get Color
+            # Get aspect ratio
 
         return {
             "id": self.ID, 
