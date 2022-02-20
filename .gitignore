@@ -4,3 +4,5 @@
 __pycache__/
 *.py[cod]
 
+# My random junk files etc
+testing_CSS_selector.*
