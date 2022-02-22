@@ -1,8 +1,10 @@
 import scrapy
 from dotenv import load_dotenv
 import os
+from datetime import datetime
 
 load_dotenv()
+datetime_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 class ScrapeTitleSpider(scrapy.Spider):
@@ -19,7 +21,8 @@ class ScrapeTitleSpider(scrapy.Spider):
         title_page = response.xpath("//main[@role='main']")
 
         # TITLE HEADER SECTION
-        title_name = title_page.css(".TitleHeader__TitleText-sc-1wu6n3d-0.dxSWFG::text").get()
+        #title_name = title_page.css(".TitleHeader__TitleText-sc-1wu6n3d-0.dxSWFG::text").get()
+        title_name = title_page.xpath(".//h1[@data-testid='hero-title-block__title']//text()").get()
         
         # RATING SECTION IN TITLE HEADER
         rating_div = title_page.css("div.AggregateRatingButton__ContentWrap-sc-1ll29m0-0.hmJkIS")
@@ -39,10 +42,10 @@ class ScrapeTitleSpider(scrapy.Spider):
             # Get id, name and rating
 
         # STORYLINE SECTION
-        storyline_section = title_page.xpath("//section[@data-testid='Storyline']")
-        storyline_text = storyline_section.xpath("//div[@data-testid='storyline-plot-summary']//div/div/text()").get()
+        storyline_section = title_page.xpath(".//section[@data-testid='Storyline']")
+        storyline_text = storyline_section.xpath(".//div[@data-testid='storyline-plot-summary']//div/div/text()").get()
         # GENRES SECTION IN STORYLINE
-        genres_selector_list = storyline_section.xpath("//li[@data-testid='storyline-genres']//ul[@role='presentation']//li")
+        genres_selector_list = storyline_section.xpath(".//li[@data-testid='storyline-genres']//ul[@role='presentation']//li")
         genres = []
         for genre in genres_selector_list:
             genres.append(genre.xpath("./a/text()").get())
@@ -70,6 +73,8 @@ class ScrapeTitleSpider(scrapy.Spider):
         # Test
 
         return {
+            "UPDATED AT": datetime_now,
+            "URL": response.url,
             "id": self.ID, 
             "name": title_name,
             "rating": rating,
