@@ -42,5 +42,5 @@ class ImdbPipeline:
 
     def process_item(self, item, spider):
         collection_name = getattr(spider, "COLLECTION_NAME")
-        self.db[collection_name].insert(item)
+        self.db[collection_name].insert_one(item)
         return item
