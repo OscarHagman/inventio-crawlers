@@ -34,7 +34,7 @@ class GetTitlesIdsSpider(scrapy.Spider):
         
         next_page = response.xpath("//div[@class='article']/div[@class='desc']/a[contains(@class, 'next-page')]/@href").get()
         if next_page:
-            if self.HAS_NEXT_PAGE <= 10:
+            if self.HAS_NEXT_PAGE <= 1:
                 self.HAS_NEXT_PAGE += 1
                 next_page_url = self.allowed_domains[0] + next_page
                 yield scrapy.Request(url=next_page_url, callback=self.parse, dont_filter=True)
