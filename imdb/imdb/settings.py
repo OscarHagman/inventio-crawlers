@@ -53,6 +53,9 @@ DEFAULT_REQUEST_HEADERS = {
 #DOWNLOADER_MIDDLEWARES = {
 #    'imdb.middlewares.ImdbDownloaderMiddleware': 543,
 #}
+DOWNLOADER_MIDDLEWARES = {
+    'imdb.ProxyMiddleware.ProxyMiddleware': 543,
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
