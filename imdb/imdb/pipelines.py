@@ -19,7 +19,7 @@ class ImdbPipeline:
 
     def open_spider(self, spider):
         ENV = os.getenv("ENV")
-        print(">>> RUNNING IN", ENV, "ENVIRONMENT")
+        print("\n>>> RUNNING IN", ENV, "ENVIRONMENT")
 
         if ENV == "DEV":
             self.MONGO_URI = os.getenv("DEV_MONGO_URI")
@@ -31,13 +31,13 @@ class ImdbPipeline:
             logging.warning("UNKNOWN ENVIORNMENT, TERMINATING SPIDER")
             sys.exit()
 
-        print(">>> MONGO_URI:", self.MONGO_URI)
+        print(">>> MONGO_URI:", self.MONGO_URI + "\n")
         self.client = pymongo.MongoClient(self.MONGO_URI)
         self.db = self.client[os.getenv("DB_NAME")]
 
 
     def close_spider(self, spider):
-        print(">>> CLOSING MONGO CONNECTION")
+        print("\n>>> CLOSING MONGO CONNECTION\n")
         self.client.close()
 
     def process_item(self, item, spider):
