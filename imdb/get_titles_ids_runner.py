@@ -19,13 +19,13 @@ USER_AGENTS = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 15_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Mobile/15E148 Safari/604.1"
 ]
 
-def run_spider(spider, user_agent):
+def run_spider(spider, genre):
     def f(q):
         try:
             settings = get_project_settings()
             configure_logging(settings)
             runner = CrawlerRunner(settings)
-            deferred = runner.crawl(spider, USER_AGENT=user_agent)
+            deferred = runner.crawl(spider, GENRE=genre)
             deferred.addBoth(lambda _: reactor.stop())
             reactor.run()
             q.put(None)
@@ -42,7 +42,7 @@ def run_spider(spider, user_agent):
         raise result
 
 def main():
-    pass
+    run_spider(GetTitlesIdsSpider, "action")
 
 if __name__ == "__main__":
     main()
