@@ -1,15 +1,28 @@
+from platform import release
 import scrapy
 from dotenv import load_dotenv
 import os
 from datetime import datetime
+import logging
 
 load_dotenv()
 datetime_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+# String manipulation start and end "words"
+img_str_start = "._V1_"
+img_str_end = ".jpg"
+name_id_start = "/name/"
+name_id_end = "?ref"
+title_id_start = "/title/"
+title_id_end = "/?ref"
+company_id_start = "/company/"
+company_id_end = "?ref"
 
 
 class ScrapeTitleSpider(scrapy.Spider):
     name = 'scrape_title'
     allowed_domains = ['imdb.com']
+    BASE_DOMAIN_URL = "https://www.imdb.com"
     COLLECTION_NAME = "titles"
     BASE_URL = os.getenv("SCRAPE_TITLE")
 
@@ -31,18 +44,22 @@ class ScrapeTitleSpider(scrapy.Spider):
 
         # MEDIA SECTION
         img_src = title_page.xpath(".//div[@data-testid='hero-media__poster']//img[@class='ipc-image']//@src").get()
-        img_src = self.get_img_full_res(img_src)
+        img_src = self.chars_between_two_strings(img_src, img_str_start, img_str_end, "-")
         trailer_src = title_page.xpath(".//div[@data-testid='hero-media__slate']//a/@href").get()
-        # div.hero-media__slate a::attr(href)
         #trailer_src = self.get_video_url(trailer_src)
         
         # CAST SECTION
-            # Get top cast
-            # Get directors
-            # Get writers
+        cast_section = title_page.xpath(".//section[@data-testid='title-cast']")
+        top_cast_section = cast_section.xpath(".//div[@data-testid='shoveler-items-container']//div[@data-testid='title-cast-item']")
+        top_cast = self.get_top_cast(top_cast_section)
+
+        crew_section = cast_section.css(".ipc-metadata-list.ipc-metadata-list--dividers-all.ipc-metadata-list--base")
+        crew = self.get_crew(crew_section)
         
         # MORE LIKE THIS SECTION
-            # Get id, name and rating
+        more_like_this_section = title_page.xpath(".//section[@data-testid='MoreLikeThis']//div[@data-testid='shoveler-items-container']")
+        more_like_this_section_list = more_like_this_section.xpath(".//div[@class='ipc-poster-card ipc-poster-card--base ipc-poster-card--dynamic-width ipc-sub-grid-item ipc-sub-grid-item--span-2']")
+        more_like_this = self.get_more_like_this(more_like_this_section_list)
 
         # STORYLINE SECTION
         storyline_section = title_page.xpath(".//section[@data-testid='Storyline']")
@@ -53,40 +70,42 @@ class ScrapeTitleSpider(scrapy.Spider):
         for genre in genres_selector_list:
             genres.append(genre.xpath("./a/text()").get())
         
-        # Get Certificate (18, PG, 16 etc)
+        certificate = title_page.xpath(".//li[@data-testid='storyline-certificate']//li[@class='ipc-inline-list__item']/span/text()").get()
         
         # DETAILS SECTION
-            # Get release date
-            # Get Country of origin
-            # Get Official Sites
-            # Get Languages
-            # Get production companies
+        details_section = title_page.xpath(".//div[@data-testid='title-details-section']")
+        details = self.get_details(details_section)
         
         # BOX OFFICE SECTION
-            # Get Budget
-            # Get Gross US & Canada
-            # Get Opening weekend US & Canada
-            # Get Gross worldwide
+        box_office_section = title_page.xpath(".//div[@data-testid='title-boxoffice-section']")
+        box_office = self.get_box_office(box_office_section)
 
         # TECH SPEC SECTIONS
-            # Get runtime
-            # Get Color
-            # Get aspect ratio
+        tech_specs_section = title_page.xpath(".//div[@data-testid='title-techspecs-section']")
+        tech_specs = self.get_tech_specs(tech_specs_section)
         
         # Test
 
         return {
             "UPDATED_AT": datetime_now,
             "URL": response.url,
-            "id": self.ID, 
-            "name": title_name,
+            "title_id": self.ID, 
+            "title_name": title_name,
             "imdb_rating": rating,
             "number_of_votes": num_of_votes,
             "meta_score": meta_score,
             "image": img_src,
-            "trailer": "https://www.imdb.com" + trailer_src,
+            "trailer": self.BASE_DOMAIN_URL + trailer_src,
+            "top_cast": top_cast,
+            "crew": crew,
+            "all_cast_&_crew": response.url + "fullcredits/",
+            "more_like_this": more_like_this,
             "genres": genres,
-            "storyline": storyline_text
+            "certificate": certificate,
+            "storyline": storyline_text,
+            "details": details,
+            "box_office": box_office,
+            "technical_specs": tech_specs
         }
 
     def get_video_url():
@@ -94,6 +113,145 @@ class ScrapeTitleSpider(scrapy.Spider):
         # follow trailer link and get the src from //*[@id="imdb-jw-video-1"]//div[@class="jw-media jw-reset"]//video/@src
         pass
 
-    def get_img_full_res(self, img_src):
-        #remove the last part of the string up to "V1_" but keep the ".jpg"
-        pass
+    def chars_between_two_strings(self, main_str, start_str, end_str, get_or_rm):
+        try:
+            start_id = main_str.find(start_str) + len(start_str)
+            end_id = main_str.find(end_str)
+        except AttributeError:
+            return None
+        except Exception as e:
+            print("\n\nCHARS_BETWEEN_TWO_STRINGS:")
+            print("SOMETHING UNEXPECTED HAPPENED\n\n", e)
+
+        if get_or_rm == "+":
+            new_str = main_str[start_id:end_id]
+        elif get_or_rm == "-":
+            new_str = main_str[:start_id] + main_str[end_id:]
+        else:
+            print('\n>>> NEED TO USE "+" OR "-" TO DETERMINE IF IT IS TO GET OR REMOVE CHARS FROM A STRING BETWEEN TWO "WORDS"\n')
+            return
+
+        return new_str
+    
+    def list_to_str(self, list):
+        result = ""
+        for item in list:
+            result += item
+        return result
+    
+    def list_to_str_with_space(self, list):
+        result = ""
+        if len(list) > 1:
+            for item in list:
+                result += item + " "
+        else:
+            return list[0]
+        return result[:-1]
+    
+    def get_top_cast(self, top_cast_section):
+        top_cast = []
+        for cast in top_cast_section:
+            cast_href = cast.xpath(".//a[@data-testid='title-cast-item__actor']//@href").get()
+            cast_id = self.chars_between_two_strings(cast_href, name_id_start, name_id_end, "+")
+            cast_img_src = cast.xpath(".//img[@class='ipc-image']//@src").get()
+            cast_image = self.chars_between_two_strings(cast_img_src, img_str_start, img_str_end, "-")
+            item = {
+                "cast_id": cast_id,
+                "cast_image": cast_image,
+                "cast_name": cast.xpath(".//a[@data-testid='title-cast-item__actor']/text()").get(),
+                "as": cast.xpath(".//span[@data-testid='cast-item-characters-with-as']/text()").get()[3:]
+            }
+            top_cast.append(item)        
+        return top_cast
+
+    def get_crew(self, crew_section):
+        crew = []
+        # Gets all the rows, each row is a crew type
+        crew_rows = crew_section.xpath(".//li[@class='ipc-metadata-list__item']")
+        # Loops through each row, getting each column (row = crew type, column = crew individual)
+        for crew_type in crew_rows:
+            cast_type = crew_type.xpath(".//span[@class='ipc-metadata-list-item__label']/text()").get()
+            cast_columns = crew_type.xpath(".//li[@class='ipc-inline-list__item']")
+            crew_individuals = []
+            for crew_individual in cast_columns:
+                crew_href = crew_individual.xpath(".//a/@href").get()
+                crew_id = self.chars_between_two_strings(crew_href, name_id_start, name_id_end, "+")
+                crew_name = crew_individual.xpath(".//a/text()").get()
+                crew_individuals.append({"cast_id": crew_id, "cast_name": crew_name})
+
+            crew.append({cast_type: crew_individuals})        
+        return crew
+    
+    def get_more_like_this(self, more_like_this_section_list):
+        more_like_this = []
+        for title in more_like_this_section_list:
+            title_href = title.xpath(".//span[@data-testid='title']/../@href").get()
+            title_id = self.chars_between_two_strings(title_href, title_id_start, title_id_end, "+")
+            name = title.xpath(".//span[@data-testid='title']/text()").get()
+            rating = title.xpath(".//span[@class='ipc-rating-star ipc-rating-star--base ipc-rating-star--imdb']/text()").get()
+            more_like_this.append({"title_id": title_id, "title_name": name, "rating": rating})
+        return more_like_this
+    
+    def get_details(self, details_section):
+        details_rows_selector = details_section.xpath(".//li[contains(@class, 'ipc-metadata-list__item')][not(@data-testid='title-details-companycredits')]")
+
+        # Gets all the rows, each row is a details type
+        # Loops through each row, getting each column (row = details type, column = detail)
+        result = []
+        for details_row in details_rows_selector:
+            details_type = details_row.xpath(".//a[@class='ipc-metadata-list-item__label ipc-metadata-list-item__label--link']/text()").get()
+            # if details_type is None, there weren't an a tag to scrape and the details type value is just plain text in a span tag
+            if details_type is None:
+                details_type = details_row.xpath(".//span[@class='ipc-metadata-list-item__label']/text()").get()
+
+            details_columns = details_row.xpath(".//li[@class='ipc-inline-list__item']")
+            details = []
+            for details_column in details_columns:
+                detail = details_column.xpath(".//a/text()").get()
+                detail_href = details_column.xpath(".//a/@href").get()
+                # if detail is not none, there is an a tag, else the coulmn value is plain text in a span tag
+                if detail is not None:
+                    # checks that the href is linking to an external webpage, if true add it, otherwise its not interesting
+                    if "https://" in detail_href or "http://" in detail_href:
+                        details.append({detail: detail_href})
+                    # if the a tags href contains "/company/", get the company id and name
+                    elif company_id_start in detail_href:
+                        company_id = self.chars_between_two_strings(detail_href, company_id_start, company_id_end, "+")
+                        details.append({"company_id": company_id, "company": detail})
+                    else:
+                        details.append(detail)
+                else:
+                    detail = details_column.xpath(".//span/text()").get()
+                    details.append(detail)
+
+            result.append({details_type: details})        
+        return result
+    
+    def get_box_office(self, box_office_section):
+        box_office_list_items = box_office_section.xpath(".//li[contains(@class, 'ipc-metadata-list__item')]")
+        result = []
+        for box_office_list_item in box_office_list_items:
+            box_office_type = box_office_list_item.xpath(".//span[@class='ipc-metadata-list-item__label']/text()").get()
+            box_office_item = box_office_list_item.xpath(".//span[@class='ipc-metadata-list-item__list-content-item']/text()").getall()
+            box_office_item = self.list_to_str_with_space(box_office_item)
+            result.append({box_office_type: box_office_item})
+        
+        return result
+    
+    def get_tech_specs(self, tech_specs_section):
+        runtime = tech_specs_section.xpath(".//li[@data-testid='title-techspec_runtime']/div/text()").getall()
+        runtime = self.list_to_str(runtime)
+        result = [{"runtime": runtime}]
+
+        tech_specs_list_items = tech_specs_section.xpath(".//li[@class='ipc-metadata-list__item'][not(@data-testid='title-techspec_runtime')]")
+        for tech_spec in tech_specs_list_items:
+            tech_spec_type = tech_spec.xpath(".//span[@class='ipc-metadata-list-item__label']/text()").get()
+            tech_spec_item = tech_spec.xpath(".//a[@class='ipc-metadata-list-item__list-content-item ipc-metadata-list-item__list-content-item--link']/text()").getall()
+            # if tech_spec_item is empty list, there weren't an a tag to scrape and the data is in a span tag instead
+            if tech_spec_item == []:
+                tech_spec_item = tech_spec.xpath(".//span[@class='ipc-metadata-list-item__list-content-item']/text()").get()
+
+            result.append({tech_spec_type: tech_spec_item})
+
+        return result
+
