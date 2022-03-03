@@ -79,7 +79,7 @@ def loop_through_collection(client, db_name, collection_name, collection_key):
     except KeyError:
         print(f'DOCUMENT "_id:{document["_id"]}" DOES NOT HAVE THE "{collection_key}" KEY')
     except Exception as e:
-        print("SOMETHING UNEXPECTED HAPPENED:\n" + e)
+        print("SOMETHING UNEXPECTED HAPPENED in loop_through_collection:\n" + e)
 
 def main():
     check_args()
