@@ -8,3 +8,4 @@ __pycache__/
 testing_CSS_selector.*
 experiments/
 html_snippets/
+test_*.py

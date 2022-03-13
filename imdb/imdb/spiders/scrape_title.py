@@ -3,7 +3,6 @@ import scrapy
 from dotenv import load_dotenv
 import os
 from datetime import datetime
-import logging
 
 load_dotenv()
 datetime_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -23,8 +22,8 @@ class ScrapeTitleSpider(scrapy.Spider):
     name = 'scrape_title'
     allowed_domains = ['imdb.com']
     BASE_DOMAIN_URL = "https://www.imdb.com"
-    COLLECTION_NAME = "titles"
-    BASE_URL = os.getenv("SCRAPE_TITLE")
+    TABLE_NAME = os.getenv("SCRAPE_TITLE_TABLE_NAME")
+    BASE_URL = os.getenv("SCRAPE_TITLE_BASE_URL")
 
     def start_requests(self):
         URL = self.BASE_URL + self.ID + "/" # Gets ID from "scrapy -a ID=tt1234567..."
@@ -35,6 +34,11 @@ class ScrapeTitleSpider(scrapy.Spider):
 
         # TITLE HEADER SECTION
         title_name = title_page.xpath(".//h1[@data-testid='hero-title-block__title']//text()").get()
+        try:
+            original_title = title_page.xpath('//div[@data-testid="hero-title-block__original-title"]/text()').get()
+            original_title = original_title.replace("Original title: ", "")
+        except Exception as e:
+            pass
         
         # RATING SECTION IN TITLE HEADER
         rating_div = title_page.css("div.AggregateRatingButton__ContentWrap-sc-1ll29m0-0.hmJkIS")
@@ -84,21 +88,19 @@ class ScrapeTitleSpider(scrapy.Spider):
         tech_specs_section = title_page.xpath(".//div[@data-testid='title-techspecs-section']")
         tech_specs = self.get_tech_specs(tech_specs_section)
         
-        # Test
-
         return {
+            "title_id": self.ID, 
             "UPDATED_AT": datetime_now,
             "URL": response.url,
-            "title_id": self.ID, 
             "title_name": title_name,
+            "original_title": original_title,
             "imdb_rating": rating,
             "number_of_votes": num_of_votes,
             "meta_score": meta_score,
             "image": img_src,
-            "trailer": self.BASE_DOMAIN_URL + trailer_src,
+            "trailer": trailer_src,
             "top_cast": top_cast,
             "crew": crew,
-            "all_cast_&_crew": response.url + "fullcredits/",
             "more_like_this": more_like_this,
             "genres": genres,
             "certificate": certificate,
@@ -144,27 +146,42 @@ class ScrapeTitleSpider(scrapy.Spider):
         if len(list) > 1:
             for item in list:
                 result += item + " "
+        elif list == []:
+            return None
         else:
             return list[0]
         return result[:-1]
     
     def get_top_cast(self, top_cast_section):
+        if top_cast_section is None or top_cast_section == []:
+            return None
+
         top_cast = []
         for cast in top_cast_section:
             cast_href = cast.xpath(".//a[@data-testid='title-cast-item__actor']//@href").get()
             cast_id = self.chars_between_two_strings(cast_href, name_id_start, name_id_end, "+")
             cast_img_src = cast.xpath(".//img[@class='ipc-image']//@src").get()
             cast_image = self.chars_between_two_strings(cast_img_src, img_str_start, img_str_end, "-")
-            item = {
+            cast_name = cast.xpath(".//a[@data-testid='title-cast-item__actor']/text()").get()
+            try:
+                cast_as = cast.xpath(".//span[@data-testid='cast-item-characters-with-as']/text()").get()[3:]
+            except TypeError:
+                cast_as = None
+            except Exception as e:
+                print("\nSOMETHING UNEXPECTED HAPPENED IN get_top_cast():\n", e)
+
+            top_cast.append({
                 "cast_id": cast_id,
                 "cast_image": cast_image,
-                "cast_name": cast.xpath(".//a[@data-testid='title-cast-item__actor']/text()").get(),
-                "as": cast.xpath(".//span[@data-testid='cast-item-characters-with-as']/text()").get()[3:]
-            }
-            top_cast.append(item)        
+                "cast_name": cast_name,
+                "as": cast_as
+                })        
         return top_cast
 
     def get_crew(self, crew_section):
+        if crew_section is None or crew_section == []:
+            return None
+
         crew = []
         # Gets all the rows, each row is a crew type
         crew_rows = crew_section.xpath(".//li[@class='ipc-metadata-list__item']")
@@ -182,9 +199,12 @@ class ScrapeTitleSpider(scrapy.Spider):
             crew.append({cast_type: crew_individuals})        
         return crew
     
-    def get_more_like_this(self, more_like_this_section_list):
+    def get_more_like_this(self, more_like_this_section):
+        if more_like_this_section is None or more_like_this_section == []:
+            return None
+
         more_like_this = []
-        for title in more_like_this_section_list:
+        for title in more_like_this_section:
             title_href = title.xpath(".//span[@data-testid='title']/../@href").get()
             title_id = self.chars_between_two_strings(title_href, title_id_start, title_id_end, "+")
             name = title.xpath(".//span[@data-testid='title']/text()").get()
@@ -193,6 +213,9 @@ class ScrapeTitleSpider(scrapy.Spider):
         return more_like_this
     
     def get_details(self, details_section):
+        if details_section is None or details_section == []:
+            return None
+
         details_rows_selector = details_section.xpath(".//li[contains(@class, 'ipc-metadata-list__item')][not(@data-testid='title-details-companycredits')]")
 
         # Gets all the rows, each row is a details type
@@ -228,6 +251,9 @@ class ScrapeTitleSpider(scrapy.Spider):
         return result
     
     def get_box_office(self, box_office_section):
+        if box_office_section is None or box_office_section == []:
+            return None
+
         box_office_list_items = box_office_section.xpath(".//li[contains(@class, 'ipc-metadata-list__item')]")
         result = []
         for box_office_list_item in box_office_list_items:
@@ -239,6 +265,9 @@ class ScrapeTitleSpider(scrapy.Spider):
         return result
     
     def get_tech_specs(self, tech_specs_section):
+        if tech_specs_section is None or tech_specs_section == []:
+            return None
+
         runtime = tech_specs_section.xpath(".//li[@data-testid='title-techspec_runtime']/div/text()").getall()
         runtime = self.list_to_str(runtime)
         result = [{"runtime": runtime}]
@@ -254,4 +283,3 @@ class ScrapeTitleSpider(scrapy.Spider):
             result.append({tech_spec_type: tech_spec_item})
 
         return result
-
